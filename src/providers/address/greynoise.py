@@ -51,7 +51,7 @@ def query(ip):
         else:
             results.append(
                 {
-                    'result': 'NotfFound in RIOT DB'
+                    'result': 'Not found in RIOT DB'
                 }
             )
 

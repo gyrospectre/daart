@@ -18,8 +18,9 @@ USEFUL = {
 def query(ip):
     url = BASE_URL.format('search')
 
+    results = []
+
     for source in SOURCES:
-        print(source)
         params = {
             'source': source,
             'query-string': str(ip)
@@ -28,11 +29,13 @@ def query(ip):
         headers = {
             'Accept': 'application/json'
         }
-        results = []
 
         r = requests.get(url, headers=headers, params=params)
 
         if r.status_code == 200:
+            result = {}
+            moreinfo = None
+
             res = json.loads(r.text)
             for obj in res['objects']['object']:
                 if 'inetnum' in obj['link']['href']:
@@ -40,9 +43,25 @@ def query(ip):
 
                 for attr in obj['attributes']['attribute']:
                     if attr.get('name'):
-                        if (attr['name'] == 'netname' and attr['value'] == 'NON-RIPE-NCC-MANAGED-ADDRESS-BLOCK'):
-                            break
                         if USEFUL.get(obj['type']) and attr['name'] in USEFUL[obj['type']]:                        
-                            print(attr)
+                            result[attr['name']] = attr['value']
+
+            if result.get('netname') != 'NON-RIPE-NCC-MANAGED-ADDRESS-BLOCK' and len(result)>0:
+                results.append(
+                    {
+                        'result': "Found in RIR {}: {}".format(
+                            source,
+                            json.dumps(result)
+                        ),
+                        'moreinfo': moreinfo
+                    }
+                )
+
+    if len(results) == 0:
+            results.append(
+                {
+                    'result': 'Not found in any RIR database.'
+                }
+            )
 
     return results
