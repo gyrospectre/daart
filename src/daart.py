@@ -7,9 +7,21 @@ import validators
 import providers.address
 import providers.domain
 
+from providers.result import Result
+
 from pprint import pprint
+
 LOGFORMAT='visual'
 
+class COLOUR:
+    BLUE = '\033[94m'
+    CYAN = '\033[96m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    RED = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
 
 class IP:
     pass
@@ -21,32 +33,34 @@ def usage(name):
     print('{} <valid IPv4 address>'.format(name))
     sys.exit(2)
 
-def logResult(provider, result):
+def logResult(provider, results):
 
-    moreinfo = result.get('moreinfo')
-    result_txt = result['result']
-        
     if LOGFORMAT == 'visual':
-        if moreinfo:
-            result_txt = result_txt + ' See {} for more info.'.format(moreinfo)
-
-        if isinstance(result_txt, list):
-            for res in result_txt:
-                print('{}: {}'.format(
-                        provider,
-                        result_txt
-                    )
-                )
-        else:
-            print('{}: {}'.format(
+        for result in results:
+            print('{}{}: {}{} {}'.format(
+                    COLOUR.CYAN,
                     provider,
-                    result_txt
+                    COLOUR.YELLOW,
+                    result.message,
+                    COLOUR.ENDC
                 )
             )
+            if result.json_result:
+                pprint(result.json_result)
+
+            if result.moreinfo:
+                print('{}See {} for more info.{}'.format(
+                        COLOUR.YELLOW,
+                        result.moreinfo,
+                        COLOUR.ENDC
+                    )
+                )
+
+
     elif LOGFORMAT == 'json':
         json_result = {
             'provider': provider,
-            'result': result_txt,
+            'result': result['result'],
             'link': moreinfo
         }
         print(json.dumps(json_result))
@@ -88,39 +102,37 @@ def import_providers(package):
 def runAddressProviders(address):
     addr_providers = import_providers(providers.address)
     if len(addr_providers) > 0:
-        print("* Running IP address '{}' through {} address providers.".format(
+        print("{}Running IP address {}'{}'{} through {} address providers.{}".format(
+            COLOUR.GREEN,
+            COLOUR.BOLD,
             address,
-            len(addr_providers))
-        )
+            COLOUR.ENDC+COLOUR.GREEN,
+            len(addr_providers),
+            COLOUR.ENDC
+        ))
     else:
         return
 
     for provider,module in addr_providers.items():
-        print("-- {} --".format(provider))
-        for result in module.query(address):
-            logResult(provider,result)
-        print('--')
-
-    print('* End address providers.')
+        logResult(provider,module.query(address))
 
 def runDomainProviders(domain):
     domain_providers = import_providers(providers.domain)
 
     if len(domain_providers) > 0:
-        print("* Running domain '{}' through {} domain providers.".format(
+        print("{}Running domain {}'{}'{} through {} domain providers.{}".format(
+            COLOUR.GREEN,
+            COLOUR.BOLD,
             domain,
-            len(domain_providers))
-        )
+            COLOUR.ENDC+COLOUR.GREEN,
+            len(domain_providers),
+            COLOUR.ENDC
+        ))
     else:
         return
 
     for provider,module in domain_providers.items():
-        print("-- {} --".format(provider))
-        for result in module.query(domain):
-            logResult(provider,result)
-        print('--')
-
-    print('* End domain providers.')
+        logResult(provider,module.query(domain))
 
 if __name__ == "__main__":
 
@@ -129,19 +141,19 @@ if __name__ == "__main__":
             runAddressProviders(sys.argv[1])
             domain = reverseLookup(sys.argv[1])
             if domain and paramType(domain) is Domain:
-                print("IP successfully resolved to {}.".format(domain))
+                print(COLOUR.BLUE+"\nIP successfully resolved to {}.".format(domain))
                 runDomainProviders(domain)
             else:
-                print("IP could not be resolved to a domain.")
+                print("\nIP could not be resolved to a domain.")
 
         elif paramType(sys.argv[1]) is Domain:
             runDomainProviders(sys.argv[1])
             ip = dnsLookup(sys.argv[1])
             if ip and paramType(ip) is IP:
-                print("Domain successfully resolved to {}.".format(ip))
+                print("\nDomain successfully resolved to {}.".format(ip))
                 runAddressProviders(ip)
             else:
-                print("Domain could not be resolved to an IP.")
+                print("\nDomain could not be resolved to an IP.")
 
 #    except Exception as e:
 #        print(e)
